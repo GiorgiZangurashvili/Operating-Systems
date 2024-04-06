@@ -58,6 +58,18 @@ procinit(void)
   }
 }
 
+uint64
+get_proc_num()
+{
+  uint64 res = 0;
+  for(int i = 0; i < NPROC; i++){
+    if(proc[i].state != UNUSED){
+      res++;
+    }
+  }
+  return res;
+}
+
 // Must be called with interrupts disabled,
 // to prevent race with process being moved
 // to a different CPU.
@@ -321,6 +333,9 @@ fork(void)
   acquire(&np->lock);
   np->state = RUNNABLE;
   release(&np->lock);
+
+  //copies masked argument to child process
+  np->arg = p->arg;
 
   return pid;
 }
