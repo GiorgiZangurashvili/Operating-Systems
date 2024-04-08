@@ -5,6 +5,7 @@
 #include "spinlock.h"
 #include "proc.h"
 #include "defs.h"
+#include <stdbool.h>
 
 struct cpu cpus[NCPU];
 
@@ -124,6 +125,17 @@ allocproc(void)
 found:
   p->pid = allocpid();
   p->state = USED;
+  p->num_ticks_passed = 0;
+  p->has_returned = true;
+  p->handler = 0;
+  p->ticks = 0;
+
+  // Allocate a trapframe copy page
+  if((p->trapframe_copy = (struct trapframe *)kalloc()) == 0){
+    freeproc(p);
+    release(&p->lock);
+    return 0;
+  }
 
   // Allocate a trapframe page.
   if((p->trapframe = (struct trapframe *)kalloc()) == 0){
@@ -131,13 +143,6 @@ found:
     release(&p->lock);
     return 0;
   }
-
-  if((p->uc = (struct usyscall*)kalloc()) == 0){
-    freeproc(p);
-    release(&p->lock);
-    return 0;
-  }
-  p->uc->pid = p->pid;
 
   // An empty user page table.
   p->pagetable = proc_pagetable(p);
@@ -165,10 +170,11 @@ freeproc(struct proc *p)
   if(p->trapframe)
     kfree((void*)p->trapframe);
   p->trapframe = 0;
-  if(p->uc)
-    kfree((void*)p->uc);
   if(p->pagetable)
     proc_freepagetable(p->pagetable, p->sz);
+  if(p->trapframe_copy)
+    kfree((void*)p->trapframe_copy);
+  p->trapframe_copy = 0;  
   p->pagetable = 0;
   p->sz = 0;
   p->pid = 0;
@@ -178,6 +184,10 @@ freeproc(struct proc *p)
   p->killed = 0;
   p->xstate = 0;
   p->state = UNUSED;
+  p->ticks = 0;
+  p->num_ticks_passed = 0;
+  p->has_returned = true;
+  p->handler = 0;
 }
 
 // Create a user page table for a given process, with no user memory,
@@ -210,15 +220,6 @@ proc_pagetable(struct proc *p)
     uvmfree(pagetable, 0);
     return 0;
   }
-  
-  //mappages(pagetable_t pagetable, uint64 va, uint64 size, uint64 pa, int perm)
-  if(mappages(pagetable, USYSCALL, PGSIZE, (uint64)(p->uc), PTE_R | PTE_U) < 0){
-    uvmunmap(pagetable, TRAMPOLINE, 1, 0);
-    uvmunmap(pagetable, TRAPFRAME, 1, 0);
-    uvmunmap(pagetable, USYSCALL, 1, 0);
-    uvmfree(pagetable, 0);
-    return 0;
-  }
 
   return pagetable;
 }
@@ -230,7 +231,6 @@ proc_freepagetable(pagetable_t pagetable, uint64 sz)
 {
   uvmunmap(pagetable, TRAMPOLINE, 1, 0);
   uvmunmap(pagetable, TRAPFRAME, 1, 0);
-  uvmunmap(pagetable, USYSCALL, 1, 0);
   uvmfree(pagetable, sz);
 }
 

@@ -1,0 +1,5 @@
+a2 register holds 13 in main's call.
+call to f function is on line 47, to function g on line 49
+
+
+printf("x=%d y=%d", 3); - a random value from current stack will be printed.

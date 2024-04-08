@@ -1,11 +1,11 @@
 #include "types.h"
 #include "riscv.h"
-#include "param.h"
 #include "defs.h"
+#include "param.h"
 #include "memlayout.h"
 #include "spinlock.h"
 #include "proc.h"
-#include <math.h>
+#include <stdbool.h>
 
 uint64
 sys_exit(void)
@@ -55,8 +55,9 @@ sys_sleep(void)
   int n;
   uint ticks0;
 
-
   argint(0, &n);
+  if(n < 0)
+    n = 0;
   acquire(&tickslock);
   ticks0 = ticks;
   while(ticks - ticks0 < n){
@@ -67,41 +68,9 @@ sys_sleep(void)
     sleep(&ticks, &tickslock);
   }
   release(&tickslock);
+  backtrace();
   return 0;
 }
-
-
-#ifdef LAB_PGTBL
-int
-sys_pgaccess(void)
-{
-  // lab pgtbl: your code here.
-  uint64 va, addr;
-  int num_pages;
-
-  argaddr(0, &va);
-  argint(1, &num_pages);
-  argaddr(2, &addr);
-  unsigned int buf = 0;
-  int shift = 0;
-
-  for(int i = 0; i < num_pages; i++){
-    pte_t* pte = walk(myproc()->pagetable, va + i * PGSIZE, 1);
-    if(*pte & PTE_A){
-      printf("GOT HERE\n");
-      buf |= (1 << shift);
-      *pte &= ~PTE_A;
-    }
-    shift++;
-  }
-
-  if(copyout(myproc()->pagetable, addr, (char*)&buf, num_pages) < 0){
-    return -1;
-  }
-
-  return 0;
-}
-#endif
 
 uint64
 sys_kill(void)
@@ -123,4 +92,26 @@ sys_uptime(void)
   xticks = ticks;
   release(&tickslock);
   return xticks;
+}
+
+uint64
+sys_sigalarm(void)
+{ 
+  uint64 handler;
+  int ticks;
+
+  argint(0, &ticks);
+  argaddr(1, &handler);
+  myproc()->ticks = ticks;
+  myproc()->handler = handler;
+  
+  return 0;
+}
+
+uint64
+sys_sigreturn(void)
+{
+  memcpy((void*)(myproc()->trapframe), (const void*)(myproc()->trapframe_copy), sizeof(struct trapframe));
+  myproc()->has_returned = true;
+  return myproc()->trapframe->a0;
 }

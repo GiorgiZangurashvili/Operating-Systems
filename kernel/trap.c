@@ -5,6 +5,7 @@
 #include "spinlock.h"
 #include "proc.h"
 #include "defs.h"
+#include <stdbool.h>
 
 struct spinlock tickslock;
 uint ticks;
@@ -66,7 +67,7 @@ usertrap(void)
 
     syscall();
   } else if((which_dev = devintr()) != 0){
-    // ok
+      //ok
   } else {
     printf("usertrap(): unexpected scause %p pid=%d\n", r_scause(), p->pid);
     printf("            sepc=%p stval=%p\n", r_sepc(), r_stval());
@@ -77,8 +78,16 @@ usertrap(void)
     exit(-1);
 
   // give up the CPU if this is a timer interrupt.
-  if(which_dev == 2)
+  if(which_dev == 2){
+    p->num_ticks_passed++;
+    if(p->has_returned && p->num_ticks_passed == p->ticks){
+      memcpy((void*)(p->trapframe_copy), (const void*)(p->trapframe), sizeof(struct trapframe));
+      p->trapframe->epc = p->handler;
+      p->num_ticks_passed = 0;
+      p->has_returned = false;
+    }
     yield();
+  }
 
   usertrapret();
 }
