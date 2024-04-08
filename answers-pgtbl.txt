@@ -1,0 +1,4 @@
+1. fork() can be made faster. Same principle works here too. fork()'s additional task besides
+creating a new process, is to return child process's id. which involves getpid() syscall, which 
+we already optimized. if in fork() we use optimized getpid(), fork() will also become faster.
+2. Figure 3-4 romelia ver mivxvdi.

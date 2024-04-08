@@ -1,11 +1,11 @@
 #include "types.h"
 #include "riscv.h"
-#include "defs.h"
 #include "param.h"
+#include "defs.h"
 #include "memlayout.h"
 #include "spinlock.h"
 #include "proc.h"
-#include "sysinfo.h"
+#include <math.h>
 
 uint64
 sys_exit(void)
@@ -55,9 +55,8 @@ sys_sleep(void)
   int n;
   uint ticks0;
 
+
   argint(0, &n);
-  if(n < 0)
-    n = 0;
   acquire(&tickslock);
   ticks0 = ticks;
   while(ticks - ticks0 < n){
@@ -70,6 +69,39 @@ sys_sleep(void)
   release(&tickslock);
   return 0;
 }
+
+
+#ifdef LAB_PGTBL
+int
+sys_pgaccess(void)
+{
+  // lab pgtbl: your code here.
+  uint64 va, addr;
+  int num_pages;
+
+  argaddr(0, &va);
+  argint(1, &num_pages);
+  argaddr(2, &addr);
+  unsigned int buf = 0;
+  int shift = 0;
+
+  for(int i = 0; i < num_pages; i++){
+    pte_t* pte = walk(myproc()->pagetable, va + i * PGSIZE, 1);
+    if(*pte & PTE_A){
+      printf("GOT HERE\n");
+      buf |= (1 << shift);
+      *pte &= ~PTE_A;
+    }
+    shift++;
+  }
+
+  if(copyout(myproc()->pagetable, addr, (char*)&buf, num_pages) < 0){
+    return -1;
+  }
+
+  return 0;
+}
+#endif
 
 uint64
 sys_kill(void)
@@ -91,34 +123,4 @@ sys_uptime(void)
   xticks = ticks;
   release(&tickslock);
   return xticks;
-}
-
-uint64
-sys_trace(void)
-{
-  int n;
-  argint(0, &n);
-  myproc()->arg = n;
-  return 0;
-}
-
-uint64 get_free_mem();
-struct sysinfo;
-
-uint64
-sys_sysinfo(void)
-{
-  uint64 addr;
-
-  argaddr(0, &addr);
-  struct proc *p = myproc();
-
-  struct sysinfo s;
-  s.freemem = get_free_mem();
-  s.nproc = get_proc_num();
-
-  if(copyout(p->pagetable, addr, (char*)&s, sizeof(s)) < 0){
-    return -1;
-  }
-  return 0;
 }

@@ -70,6 +70,49 @@ kvminithart()
   sfence_vma();
 }
 
+void wrapper(pagetable_t pagetable, int idx, int child_num){
+  char depth[3 * child_num];
+  for(int i = 0; i < 3 * child_num; i += 3){
+    depth[i] = ' ';
+    depth[i + 1] = '.';
+    depth[i + 2] = '.';
+  }
+  if(child_num == 1){
+    printf(" ..%d: pte %p pa %p\n", idx, PA2PTE(pagetable), pagetable);
+  }else{
+    printf("%s%d: pte %p pa %p\n", depth, idx, PA2PTE(pagetable), pagetable);
+  }
+  child_num++;
+  for(int i = 0; i < 512; i++){
+    pte_t pte = pagetable[i];
+    if((pte & PTE_V) && (pte & (PTE_R|PTE_W|PTE_X)) == 0){
+      uint64 child = PTE2PA(pte);
+      wrapper((pagetable_t)child, i, child_num);
+    }else{
+      if(pte & PTE_V){
+        char _depth[3 * child_num];
+        for(int j = 0; j < 3 * child_num; j += 3){
+          _depth[j] = ' ';
+          _depth[j + 1] = '.';
+          _depth[j + 2] = '.';
+        }
+        printf("%s%d: pte %p pa %p\n", _depth, i, pte, PTE2PA(pte));
+      }
+    }
+  }
+}
+
+void vmprint(pagetable_t pagetable){
+  printf("page table %p\n", pagetable);
+  for(int i = 0; i < 512; i++){
+    pte_t pte = pagetable[i];
+    if(pte & PTE_V){
+      uint64 child = PTE2PA(pte);
+      wrapper((pagetable_t)child, i, 1);
+    }
+  }
+}
+
 // Return the address of the PTE in page table pagetable
 // that corresponds to virtual address va.  If alloc!=0,
 // create any required page-table pages.
