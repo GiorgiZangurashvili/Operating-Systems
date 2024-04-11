@@ -1,4 +1,3 @@
-#include <stdbool.h>
 // Saved registers for kernel context switches.
 struct context {
   uint64 ra;
@@ -92,11 +91,6 @@ struct proc {
   int killed;                  // If non-zero, have been killed
   int xstate;                  // Exit status to be returned to parent's wait
   int pid;                     // Process ID
-  int ticks;                   // Alarm interval
-  uint64 handler;              // Pointer to the handler function
-  int num_ticks_passed;               // Number of ticks passed after since the last call
-  struct trapframe* trapframe_copy; // Copy of a trapframe to save previous registers
-  bool has_returned;           // Represents if handler function has returned or not
 
   // wait_lock must be held when using this:
   struct proc *parent;         // Parent process

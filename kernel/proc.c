@@ -5,7 +5,6 @@
 #include "spinlock.h"
 #include "proc.h"
 #include "defs.h"
-#include <stdbool.h>
 
 struct cpu cpus[NCPU];
 
@@ -125,17 +124,6 @@ allocproc(void)
 found:
   p->pid = allocpid();
   p->state = USED;
-  p->num_ticks_passed = 0;
-  p->has_returned = true;
-  p->handler = 0;
-  p->ticks = 0;
-
-  // Allocate a trapframe copy page
-  if((p->trapframe_copy = (struct trapframe *)kalloc()) == 0){
-    freeproc(p);
-    release(&p->lock);
-    return 0;
-  }
 
   // Allocate a trapframe page.
   if((p->trapframe = (struct trapframe *)kalloc()) == 0){
@@ -172,9 +160,6 @@ freeproc(struct proc *p)
   p->trapframe = 0;
   if(p->pagetable)
     proc_freepagetable(p->pagetable, p->sz);
-  if(p->trapframe_copy)
-    kfree((void*)p->trapframe_copy);
-  p->trapframe_copy = 0;  
   p->pagetable = 0;
   p->sz = 0;
   p->pid = 0;
@@ -184,10 +169,6 @@ freeproc(struct proc *p)
   p->killed = 0;
   p->xstate = 0;
   p->state = UNUSED;
-  p->ticks = 0;
-  p->num_ticks_passed = 0;
-  p->has_returned = true;
-  p->handler = 0;
 }
 
 // Create a user page table for a given process, with no user memory,
@@ -470,9 +451,13 @@ scheduler(void)
   for(;;){
     // Avoid deadlock by ensuring that devices can interrupt.
     intr_on();
-
+    
+    int nproc = 0;
     for(p = proc; p < &proc[NPROC]; p++) {
       acquire(&p->lock);
+      if(p->state != UNUSED) {
+        nproc++;
+      }
       if(p->state == RUNNABLE) {
         // Switch to chosen process.  It is the process's job
         // to release its lock and then reacquire it
@@ -486,6 +471,10 @@ scheduler(void)
         c->proc = 0;
       }
       release(&p->lock);
+    }
+    if(nproc <= 2) {   // only init and sh exist
+      intr_on();
+      asm volatile("wfi");
     }
   }
 }

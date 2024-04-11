@@ -5,7 +5,6 @@
 #include "spinlock.h"
 #include "proc.h"
 #include "defs.h"
-#include <stdbool.h>
 
 struct spinlock tickslock;
 uint ticks;
@@ -67,7 +66,23 @@ usertrap(void)
 
     syscall();
   } else if((which_dev = devintr()) != 0){
-      //ok
+    // ok
+  }else if(r_scause() == 13 || r_scause() == 15){
+    uint64 stval_reg = r_stval();
+    if(stval_reg >= p->sz || stval_reg < p->trapframe->sp || p->sz >= MAXVA){
+      p->killed = 1;
+    }else{
+      void* new_alloc_pg;
+      if((new_alloc_pg = kalloc()) != 0){
+        memset(new_alloc_pg, 0, PGSIZE);
+        if(mappages(p->pagetable, PGROUNDDOWN(stval_reg), PGSIZE, (uint64)new_alloc_pg, PTE_U | PTE_R | PTE_W) != 0){
+          kfree(new_alloc_pg);
+          p->killed = 1;
+        }
+      }else{
+        p->killed = 1;
+      }
+    }
   } else {
     printf("usertrap(): unexpected scause %p pid=%d\n", r_scause(), p->pid);
     printf("            sepc=%p stval=%p\n", r_sepc(), r_stval());
@@ -78,16 +93,8 @@ usertrap(void)
     exit(-1);
 
   // give up the CPU if this is a timer interrupt.
-  if(which_dev == 2){
-    p->num_ticks_passed++;
-    if(p->has_returned && p->num_ticks_passed == p->ticks){
-      memcpy((void*)(p->trapframe_copy), (const void*)(p->trapframe), sizeof(struct trapframe));
-      p->trapframe->epc = p->handler;
-      p->num_ticks_passed = 0;
-      p->has_returned = false;
-    }
+  if(which_dev == 2)
     yield();
-  }
 
   usertrapret();
 }
