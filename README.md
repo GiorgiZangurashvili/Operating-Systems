@@ -13,3 +13,7 @@ https://freeuni-os-fall22.github.io/Lab%20page%20tables.html
 
 ### Lab 4:  
 https://freeuni-os-fall22.github.io/Lab%20Traps.html  
+
+### Lab 5:  
+https://freeuni-os-fall22.github.io/Lab%20xv6%20lazy%20page%20allocation.html  
+
