@@ -20,3 +20,7 @@ https://freeuni-os-fall22.github.io/Lab%20xv6%20lazy%20page%20allocation.html
 ### Lab 6:  
 https://freeuni-os-fall22.github.io/Lab%20Copy-on-Write%20Fork%20for%20xv6.html  
 
+### Lab 7:  
+https://freeuni-os-fall22.github.io/Lab%20Multithreading.html  
+
+
