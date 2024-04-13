@@ -1,0 +1,28 @@
+Q:
+Why are there missing keys with 2 threads, but not with 1 thread? 
+Identify a sequence of events with 2 threads that can lead to a key being missing.
+A:
+let's take an example where two threads have different keys, but int i = key % NBUCKET both thread's i has same value.
+so both threads will try to put their value in same bucket. let's take a look at this code segment:
+if(e){
+    // update the existing key.
+    e->value = value;
+} else {
+    // the new is new.
+    insert(key, value, &table[i], table[i]);
+}
+let's say one thread has entered if(e) statement and paused, then the other thread entered same if and made changes e->value = value.
+then this first thread woke up and also made change e->value = value. we have lost the key second thread held, because first thread 
+has overriden this key with it's own.
+Q:
+Test your code first with 1 thread, then test it with 2 threads. Is it correct (i.e. have you eliminated missing keys?)? 
+Does the two-threaded version achieve parallel speedup (i.e. more total work per unit time) relative to the single-threaded version?
+A:
+1) not yet.
+2) yes.
+Q:
+There are situations where concurrent put()s have no overlap in the memory they read or write in the hash table, and thus don't need 
+a lock to protect against each other. Can you change ph.c to take advantage of such situations to obtain parallel 
+speedup for some put()s?
+A:
+there can be used lock per hash bucket (also was written in hints).
