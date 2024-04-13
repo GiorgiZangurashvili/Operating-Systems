@@ -23,4 +23,8 @@ https://freeuni-os-fall22.github.io/Lab%20Copy-on-Write%20Fork%20for%20xv6.html
 ### Lab 7:  
 https://freeuni-os-fall22.github.io/Lab%20Multithreading.html  
 
+### Lab 8:  
+https://freeuni-os-fall22.github.io/Lab%20locks.html  
+
+
 
