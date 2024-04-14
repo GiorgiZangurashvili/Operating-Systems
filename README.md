@@ -26,5 +26,8 @@ https://freeuni-os-fall22.github.io/Lab%20Multithreading.html
 ### Lab 8:  
 https://freeuni-os-fall22.github.io/Lab%20locks.html  
 
+### Lab 9:  
+https://freeuni-os-fall22.github.io/net.html  
+
 
 
